@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "deepseek-obsidian"
+version = "0.1.0"
+description = "Model-independent PDF-to-knowledge pipeline for an Obsidian-style research vault."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.8,<3",
+  "python-dotenv>=1.0,<2",
+  "httpx>=0.27,<1",
+  "pymupdf>=1.26,<2",
+  "pymupdf4llm>=0.2,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8,<9",
+  "ruff>=0.6,<1",
+]
+
+[project.scripts]
+deepseek-obsidian = "deepseek_obsidian.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
