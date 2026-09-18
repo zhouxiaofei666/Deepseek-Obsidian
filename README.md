@@ -2,7 +2,7 @@
 
 AI-assisted research knowledge vault inspired by Obsidian.
 
-The project is designed around a model-independent pipeline:
+The core design is **model-independent**:
 
 ```text
 PDF / notes / documents
@@ -16,7 +16,7 @@ Normalized Document Package
         |
         v
 LLM Provider
-(DeepSeek / OpenAI / other compatible models)
+(DeepSeek / OpenAI-compatible / future local models)
         |
         v
 Structured understanding
@@ -27,23 +27,28 @@ Knowledge graph / backlinks / visualization
 
 ## Current milestone
 
-The first milestone focuses only on one problem:
+The first milestone solves one problem well:
 
 > Convert research PDFs into a reliable, model-friendly document package that DeepSeek or another LLM can understand.
 
-No knowledge graph is required for the first milestone.
+The knowledge graph is scaffolded, but not yet the active focus.
 
-## Design principles
+## Why the processing can be shared by DeepSeek and Codex/OpenAI
 
-- Markdown-first and Obsidian-compatible.
-- PDF parsing is independent from the LLM.
-- DeepSeek is the default provider, not a hard dependency.
-- Figures and tables are preserved for multimodal processing.
-- Page provenance is retained so every extracted claim can be traced back.
-- Future graph generation uses explicit nodes, edges, evidence and confidence.
-- Local files remain the source of truth.
+The difficult PDF work happens **before** the model is called.
 
-## Planned package
+Both providers receive the same normalized material:
+
+- clean Markdown text;
+- explicit page boundaries;
+- PDF metadata;
+- extracted figures;
+- table/figure references;
+- source provenance.
+
+The provider layer only decides how those materials are interpreted. A stronger text or vision model can therefore be swapped in without rebuilding the PDF pipeline.
+
+## Project structure
 
 ```text
 deepseek-obsidian/
@@ -54,55 +59,126 @@ deepseek-obsidian/
 │   ├── pipeline.py
 │   ├── parsers/
 │   │   └── pdf.py
-│   └── providers/
-│       ├── base.py
-│       ├── deepseek.py
-│       └── openai_compatible.py
+│   ├── providers/
+│   │   ├── base.py
+│   │   ├── deepseek.py
+│   │   └── openai_compatible.py
+│   └── knowledge/
+│       └── schema.py
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   └── ROADMAP.md
 ├── tests/
-│   └── test_models.py
+├── .github/workflows/ci.yml
 ├── .env.example
 ├── .gitignore
 └── pyproject.toml
 ```
 
-## Output format
+## Quick start
 
-For an input such as:
+Clone the repository and create a Python 3.11+ environment:
 
-```text
-papers/example.pdf
+```bash
+git clone https://github.com/zhouxiaofei666/Deepseek-Obsidian.git
+cd Deepseek-Obsidian
+
+python -m venv .venv
 ```
 
-the parser will create:
+On Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+```
+
+Process a paper:
+
+```powershell
+deepseek-obsidian ingest "D:\papers\example.pdf"
+```
+
+The parser writes a content-derived document folder under:
 
 ```text
-vault/_processed/example/
+vault/_processed/<document-id>/
 ├── document.md
 ├── document.json
 ├── pages.json
+├── reading_packet.md
 └── images/
 ```
 
-This normalized package is what the model layer consumes.
+### document.md
 
-## Why this works with both DeepSeek and Codex/OpenAI
+Portable Markdown intended for both people and LLMs. Page markers are retained:
 
-The parsing stage does not depend on model intelligence.
+```html
+<!-- PAGE:7 -->
+```
 
-Both providers receive the same structured inputs:
+### pages.json
 
-- clean Markdown text;
-- page boundaries;
-- metadata;
-- extracted figures;
-- table/figure references;
-- source provenance.
+Per-page structured text used later for retrieval, citations and evidence tracking.
 
-The provider layer only decides how those inputs are interpreted. A stronger vision model can therefore be substituted without rebuilding the PDF pipeline.
+### document.json
 
-## Development status
+Machine-readable manifest describing the processed paper.
 
-Scaffold in progress. The repository is intentionally being built milestone-by-milestone.
+### images/
+
+Extracted figure/image regions. They are deliberately separated from text reasoning so the project can route them to whichever vision model is most suitable.
+
+## Model providers
+
+The parser is independent of the model.
+
+Currently scaffolded:
+
+- **DeepSeekProvider** — default text reasoning path.
+- **OpenAICompatibleProvider** — generic text/vision-compatible adapter.
+- **LLMProvider** — base interface for future providers.
+
+This means the future routing can be:
+
+```text
+paper text  -> DeepSeek
+figures     -> vision-capable provider
+final merge -> DeepSeek or another reasoning model
+```
+
+without changing PDF ingestion.
+
+## Configuration
+
+Copy:
+
+```text
+.env.example
+```
+
+to:
+
+```text
+.env
+```
+
+API keys are intentionally excluded from Git.
+
+## Development principles
+
+- Markdown-first and Obsidian-compatible.
+- Original files remain the source of truth.
+- AI-generated relations must retain evidence and source pages.
+- Low-confidence edits should eventually go to a review queue.
+- Derived graph data must be rebuildable.
+- Model choice must remain replaceable.
+- Git history will provide rollback for automated knowledge edits.
+
+## Next work
+
+See `docs/ROADMAP.md`.
+
+The immediate next milestone is to validate the PDF package on real scientific papers, then add a fixed scientific-paper schema for Methods, Dataset, Metrics, Results, Limitations and Figures.
